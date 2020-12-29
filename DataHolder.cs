@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace TemperatureWPF
 {
-    class MedianValue
+    class DataHolder
     {
         public double? Value { get; set; }
         public string Date { get; set; }
 
 
-        public MedianValue(double? value, string date)
+        public DataHolder(double? value, string date)
         {
             Value = value;
             Date = date;

@@ -83,11 +83,13 @@ namespace TemperatureWPF
 
         private void datePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
         {
-
-            DateTime? selectedDate = datePicker.SelectedDate.Value;
-            string table = indoorRadioButton.IsChecked.Value ? "Indoor" : "Outdoor";
-            double? temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(table, selectedDate), 1);
-            MessageBox.Show($"At {selectedDate.Value.ToString(Dates.DateFormat)} it was an average temperature of {temperatureForSelectedDate} {table}");
+            using (var context = new TemperatureDBContext())
+            {
+                DateTime? selectedDate = datePicker.SelectedDate.Value;
+                List<object> table = indoorRadioButton.IsChecked.Value ? context.Indoors.ToList() : context.Outdoors;
+                double? temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(context., selectedDate), 1);
+                MessageBox.Show($"At {selectedDate.Value.ToString(Dates.DateFormat)} it was an average temperature of {temperatureForSelectedDate} {table}");
+            }
            
             
         }
