@@ -22,7 +22,7 @@ create table Indoor (
 						Temperature float,
 						Humidity int,
 						PRIMARY KEY (ID))
-create table Indoor (
+create table Outdoor (
 						ID int IDENTITY NOT NULL,
 						Date DateTime2,
 						Temperature float,
@@ -32,5 +32,5 @@ create table Indoor (
 
 
 
-select AVG(Temperature) from Temperatures
-WHERE Date like '2016-11-10%' AND Location = 'Ute'
+select AVG(Temperature) from Indoor
+WHERE Date like '2016-10-18%'

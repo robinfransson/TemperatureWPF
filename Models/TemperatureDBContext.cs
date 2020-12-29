@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -26,7 +27,7 @@ namespace TemperatureWPF.Models
             if (!optionsBuilder.IsConfigured)
             {
                 IConfigurationRoot configuration = new ConfigurationBuilder()
-                    .SetBasePath(@"D:\.net programmering lektioner\TemperatureWPF")
+                    .SetBasePath(Directory.GetCurrentDirectory())
                     .AddJsonFile("appsettings.json")
                     .Build();
                 optionsBuilder.UseSqlServer(configuration.GetConnectionString("TemperatureDB"));

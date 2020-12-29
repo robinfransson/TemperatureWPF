@@ -7,10 +7,13 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="505" Width="898">
     <Grid Margin="0,0,-100,-54">
-        <DatePicker x:Name="datePicker" HorizontalAlignment="Left" Margin="30,37,0,0" VerticalAlignment="Top"/>
-        <Label x:Name="medianTemperatureLabel" Content="Label" HorizontalAlignment="Left" Margin="159,37,0,0" VerticalAlignment="Top"/>
-        <RadioButton x:Name="outdoorRadioButton" Content="RadioButton" HorizontalAlignment="Left" Margin="136,402,0,0" VerticalAlignment="Top" Checked="outdoorRadioButton_Checked"/>
-        <RadioButton x:Name="indoorRadioButton" Content="RadioButton" HorizontalAlignment="Left" Margin="10,402,0,0" VerticalAlignment="Top" Checked="indoorRadioButton_Checked"/>
+        <DatePicker x:Name="datePicker" HorizontalAlignment="Left" Margin="30,37,0,0" VerticalAlignment="Top" SelectedDateChanged="datePicker_SelectedDateChanged"/>
+        <RadioButton x:Name="outdoorRadioButton" Content="Outdoor" HorizontalAlignment="Left" Margin="10,239,0,0" VerticalAlignment="Top" Checked="outdoorRadioButton_Checked"/>
+        <RadioButton x:Name="indoorRadioButton" Content="Indoor" HorizontalAlignment="Left" Margin="10,204,0,0" VerticalAlignment="Top" Checked="indoorRadioButton_Checked"/>
+        <Button x:Name="importButton" Content="Import" HorizontalAlignment="Left" Margin="849,409,0,0" VerticalAlignment="Top" Click="importButton_Click"/>
+        <DataGrid x:Name="dataGrid" HorizontalAlignment="Left" Height="363" Margin="153,10,0,0" VerticalAlignment="Top" Width="736"/>
+        <Button x:Name="medianTemperature" Content="Median Temperature" HorizontalAlignment="Left" Height="20" Margin="153,394,0,0" VerticalAlignment="Top" Width="120" Click="medianTemperature_Click"/>
+        <Button x:Name="medianHumidity" Content="Median Humidity" HorizontalAlignment="Left" Height="20" Margin="295,394,0,0" VerticalAlignment="Top" Width="103" Click="medianHumidity_Click"/>
 
     </Grid>
 </Window>

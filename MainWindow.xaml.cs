@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,8 +22,10 @@ namespace TemperatureWPF
     /// </summary>
     public partial class MainWindow : Window
     {
+
+
         List<DateTime> indoorDates { get; set; } 
-        List<DateTime> outdoorDates { get; set; } 
+        List<DateTime> outdoorDates { get; set; }
         public MainWindow()
         {
             InitializeComponent();
@@ -31,35 +34,92 @@ namespace TemperatureWPF
 
         private void SetupDatePicker()
         {
-            string dateFormat = "yyyy-MM-dd";
-            using(var context = new TemperatureDBContext())
+            using (var context = new TemperatureDBContext())
             {
-            indoorDates = context.Indoors.AsEnumerable().GroupBy(indoorData => indoorData.Date.Value.ToString(dateFormat))
-            .Select(group => DateTime.Parse(group.Key))
-            .ToList();
-
-
-            outdoorDates = context.Indoors.AsEnumerable().GroupBy(outdoorData => outdoorData.Date.Value.ToString(dateFormat))
-            .Select(group => DateTime.Parse(group.Key))
-            .ToList();
-
+                indoorDates = Dates.ExtractDates<Indoor>(context.Indoors.ToList());
+                outdoorDates = Dates.ExtractDates<Outdoor>(context.Outdoors.ToList());
             }
+            indoorRadioButton.IsChecked = true;
         }
 
         private void outdoorRadioButton_Checked(object sender, RoutedEventArgs e)
         {
             indoorRadioButton.IsChecked = !outdoorRadioButton.IsChecked;
+            EnableDates(outdoorDates);
+            datePicker.BlackoutDates.Clear();
+            foreach (var range in Dates.FindMissingDates(outdoorDates))
+            {
+                datePicker.BlackoutDates.Add(range);
+            }
         }
 
         private void indoorRadioButton_Checked(object sender, RoutedEventArgs e)
         {
             outdoorRadioButton.IsChecked = !indoorRadioButton.IsChecked;
+            EnableDates(indoorDates);
+
+            datePicker.BlackoutDates.Clear();
+            foreach (var range in Dates.FindMissingDates(indoorDates))
+            {
+                datePicker.BlackoutDates.Add(range);
+            }
         }
 
 
         private void EnableDates(List<DateTime> dates)
         {
+            dates = dates.OrderBy(date => date.Year)
+                .ThenBy(date => date.Month)
+                .ThenBy(date => date.Day)
+                .ToList();
             datePicker.DisplayDateStart = dates.FirstOrDefault();
+            datePicker.DisplayDateEnd = dates.LastOrDefault();
+        }
+
+        private void importButton_Click(object sender, RoutedEventArgs e)
+        {
+            Setup.ImportToDB();
+        }
+
+        private void datePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+            DateTime? selectedDate = datePicker.SelectedDate.Value;
+            string table = indoorRadioButton.IsChecked.Value ? "Indoor" : "Outdoor";
+            double? temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(table, selectedDate), 1);
+            MessageBox.Show($"At {selectedDate.Value.ToString(Dates.DateFormat)} it was an average temperature of {temperatureForSelectedDate} {table}");
+           
+            
+        }
+
+        private void medianTemperature_Click(object sender, RoutedEventArgs e)
+        {
+            using (var context = new TemperatureDBContext())
+            {
+                if (indoorRadioButton.IsChecked.Value)
+                {
+                    dataGrid.ItemsSource = SearchDatabase.GetAverageTemperatures<Indoor>(context.Indoors.ToList());
+                }
+                else
+                {
+                    dataGrid.ItemsSource = SearchDatabase.GetAverageTemperatures<Outdoor>(context.Outdoors.ToList());
+                }
+            }
+        }
+
+        private void medianHumidity_Click(object sender, RoutedEventArgs e)
+        {
+            using (var context = new TemperatureDBContext())
+            {
+                if (indoorRadioButton.IsChecked.Value)
+                {
+                    dataGrid.ItemsSource = SearchDatabase.GetAverageHumidities<Indoor>(context.Indoors.ToList());
+                }
+                else
+                {
+                    dataGrid.ItemsSource = SearchDatabase.GetAverageHumidities<Outdoor>(context.Outdoors.ToList());
+                }
+            }
         }
     }
 }
