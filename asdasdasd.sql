@@ -39,3 +39,8 @@ create table Outdoor (
 
 select AVG(Temperature) from Temperatures
 WHERE Date like '2016-11-10%' AND Location = 'Ute'
+
+Select avg(Humidity) from Outdoor
+group by Humidity
+order by Humidity desc
+

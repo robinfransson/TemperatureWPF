@@ -5,15 +5,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TemperatureWPF"
         mc:Ignorable="d"
-        Title="MainWindow" Height="505" Width="898">
-    <Grid Margin="0,0,-100,-54">
+        Title="MainWindow" Height="508" Width="452">
+    <Grid Margin="0,0,0,-6">
         <DatePicker x:Name="datePicker" HorizontalAlignment="Left" Margin="30,37,0,0" VerticalAlignment="Top" SelectedDateChanged="datePicker_SelectedDateChanged"/>
         <RadioButton x:Name="outdoorRadioButton" Content="Outdoor" HorizontalAlignment="Left" Margin="10,239,0,0" VerticalAlignment="Top" Checked="outdoorRadioButton_Checked"/>
         <RadioButton x:Name="indoorRadioButton" Content="Indoor" HorizontalAlignment="Left" Margin="10,204,0,0" VerticalAlignment="Top" Checked="indoorRadioButton_Checked"/>
-        <Button x:Name="importButton" Content="Import" HorizontalAlignment="Left" Margin="849,409,0,0" VerticalAlignment="Top" Click="importButton_Click"/>
-        <DataGrid x:Name="dataGrid" HorizontalAlignment="Left" Height="363" Margin="153,10,0,0" VerticalAlignment="Top" Width="736"/>
-        <Button x:Name="medianTemperature" Content="Median Temperature" HorizontalAlignment="Left" Height="20" Margin="153,394,0,0" VerticalAlignment="Top" Width="120" Click="medianTemperature_Click"/>
-        <Button x:Name="medianHumidity" Content="Median Humidity" HorizontalAlignment="Left" Height="20" Margin="295,394,0,0" VerticalAlignment="Top" Width="103" Click="medianHumidity_Click"/>
+        <Button x:Name="importButton" Content="Import" HorizontalAlignment="Left" Margin="358,451,0,0" VerticalAlignment="Top" Click="importButton_Click"/>
+        <DataGrid x:Name="dataGrid" HorizontalAlignment="Left" Height="363" Margin="153,10,0,0" VerticalAlignment="Top" Width="245"/>
+        <Button x:Name="medianTemperatureButton" Content="Median Temperature" HorizontalAlignment="Left" Height="20" Margin="153,394,0,0" VerticalAlignment="Top" Width="120" Click="medianTemperature_Click"/>
+        <Button x:Name="medianHumidityButton" Content="Median Humidity" HorizontalAlignment="Left" Height="20" Margin="295,394,0,0" VerticalAlignment="Top" Width="103" Click="medianHumidity_Click"/>
+        <Button x:Name="autumnStartButton" Content="Autumn Start" HorizontalAlignment="Left" Height="23" Margin="10,424,0,0" VerticalAlignment="Top" Width="84" Click="autumnStart_Click"/>
+        <Label x:Name="yearLabel" Content="Year" HorizontalAlignment="Left" Margin="36,373,0,0" VerticalAlignment="Top"/>
+        <Button x:Name="winterStartButton" Content="Winter Start" HorizontalAlignment="Left" Height="23" Margin="10,454,0,0" VerticalAlignment="Top" Width="84" Click="winterStartButton_Click"/>
+        <ComboBox x:Name="yearSelectComboBox" HorizontalAlignment="Left" Height="15" Margin="16,404,0,0" VerticalAlignment="Top" Width="72"/>
 
     </Grid>
 </Window>

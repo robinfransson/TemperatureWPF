@@ -11,6 +11,7 @@ namespace TemperatureWPF
     class Dates
     {
 
+
         public static readonly string DateFormat = "yyyy-MM-dd";
         public static List<DateTime> ExtractDates<T>(List<T> temperatureData)
         {
@@ -53,6 +54,22 @@ namespace TemperatureWPF
                 }
             }
             return datesToBlock;
+        }
+
+
+        public static List<string> FindYearsAvailable()
+        {
+            List<string> years = new List<string>();
+            using(var context = new TemperatureDBContext())
+            {
+                var groupedByYears = context.Outdoors.AsEnumerable().GroupBy(outdoor => outdoor.Date.Value.Year.ToString());
+
+                foreach(var group in groupedByYears)
+                {
+                    years.Add(group.Key);
+                }
+            }
+            return years;
         }
     }
 }

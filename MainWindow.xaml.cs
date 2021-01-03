@@ -30,8 +30,16 @@ namespace TemperatureWPF
         {
             InitializeComponent();
             SetupDatePicker();
+            GetAvailableYears();
         }
 
+
+        private void GetAvailableYears()
+        {
+            List<string> years = Dates.FindYearsAvailable();
+            yearSelectComboBox.ItemsSource = years;
+            yearSelectComboBox.SelectedValue = years[0];
+        }
         private void SetupDatePicker()
         {
             using (var context = new TemperatureDBContext())
@@ -85,10 +93,23 @@ namespace TemperatureWPF
         {
             using (var context = new TemperatureDBContext())
             {
-                DateTime? selectedDate = datePicker.SelectedDate.Value;
-                List<object> table = indoorRadioButton.IsChecked.Value ? context.Indoors.ToList() : context.Outdoors;
-                double? temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(context., selectedDate), 1);
-                MessageBox.Show($"At {selectedDate.Value.ToString(Dates.DateFormat)} it was an average temperature of {temperatureForSelectedDate} {table}");
+                DateTime selectedDate = datePicker.SelectedDate.Value;
+                bool indoorTable = indoorRadioButton.IsChecked.Value;
+                double? temperatureForSelectedDate;
+                string table = "";
+                switch (indoorTable)
+                {
+                    case true:
+                        temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(context.Indoors.ToList(), selectedDate), 1);
+                        table = "indoors";
+                        break;
+                    case false:
+                        temperatureForSelectedDate = Math.Round(SearchDatabase.MedianTemperatureSpecifiedDate(context.Outdoors.ToList(), selectedDate), 1);
+                        table = "outdoors";
+                        break;
+                        
+                }
+                MessageBox.Show($"At {selectedDate.ToString(Dates.DateFormat)} it was an average temperature of {temperatureForSelectedDate} {table}.");
             }
            
             
@@ -122,6 +143,35 @@ namespace TemperatureWPF
                     dataGrid.ItemsSource = SearchDatabase.GetAverageHumidities<Outdoor>(context.Outdoors.ToList());
                 }
             }
+        }
+
+        private void autumnStart_Click(object sender, RoutedEventArgs e)
+        {
+            int selectedYear = int.Parse(yearSelectComboBox.SelectedItem.ToString());
+            DateTime? autumnStartDate = SearchDatabase.FindAutumnStart(selectedYear);
+            if (!autumnStartDate.HasValue)
+            {
+                MessageBox.Show("No data avaiable from " + selectedYear);
+            }
+            else
+            {
+                MessageBox.Show($"In {selectedYear} autumn started at: {autumnStartDate.Value.ToString(Dates.DateFormat)}");
+            }
+        }
+
+        private void winterStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            int selectedYear = int.Parse(yearSelectComboBox.SelectedItem.ToString());
+            DateTime? winterStartDate = SearchDatabase.FindWinterStart(selectedYear);
+            if (!winterStartDate.HasValue)
+            {
+                MessageBox.Show("No data avaiable from " + selectedYear);
+            }
+            else
+            {
+                MessageBox.Show($"In {selectedYear} autumn started at: {winterStartDate.Value.ToString(Dates.DateFormat)}");
+            }
+            
         }
     }
 }
