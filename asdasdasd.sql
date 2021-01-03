@@ -7,9 +7,11 @@ create database TemperatureDB
 
 use TemperatureDB
 
+drop database TemperatureDB
 
 
-drop table Temperatures
+
+drop table Indoor, Outdoor
 /*
 create table Temperatures (
 			ID int IDENTITY NOT NULL,

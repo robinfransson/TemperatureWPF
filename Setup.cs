@@ -4,6 +4,8 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using TemperatureWPF.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace TemperatureWPF
 {
@@ -15,11 +17,77 @@ namespace TemperatureWPF
 
         [DllImport("Kernel32")]
         public static extern void FreeConsole();
-        public static void ImportToDB()
+
+        public static void Verify()
         {
             AllocConsole();
-            var j = "2016 - 05 - 31 13:58:30,Inne,24.8,42";
-            string[] temperatureFileRows = File.ReadAllLines(Directory.GetCurrentDirectory() + @"\TemperaturData.csv");
+            bool dbCreated = DatabaseExists();
+            Console.WriteLine("Database created now="+dbCreated);
+            using(var context = new TemperatureDBContext())
+            {
+                bool dataInOutdoorTable = context.Outdoors.Any();
+                bool dataInIndoorTable = context.Indoors.Any();
+                if(!dataInIndoorTable)
+                {
+                    Console.WriteLine("Table Indoor does not have data! Press anywhere to import it!");
+                    Console.ReadKey();
+                    ImportToDB("Inne");
+                }
+                if (!dataInOutdoorTable)
+                {
+                    Console.WriteLine("Table Outdoor does not have data! Press anywhere to import it!");
+                    Console.ReadKey();
+                    ImportToDB("Ute");
+                }
+            }
+            FreeConsole();
+        }
+
+
+        public static void CreateTable(string tableName)
+        {
+            string sqlQuery = "create table " + tableName + "(" +
+                              "ID int IDENTITY NOT NULL," +
+                              "Date DateTime2," +
+                              "Temperature float," +
+                              "Humidity int," +
+                              "PRIMARY KEY(ID))";
+            using(var context = new TemperatureDBContext())
+            {
+                int queryResult = context.Database.ExecuteSqlRaw(sqlQuery);
+                Console.WriteLine("result="+queryResult);
+            }
+        }
+
+        public static bool DatabaseExists()
+        {
+            using (var context = new TemperatureDBContext())
+            {
+                return context.Database.EnsureCreated();
+
+            }
+        }
+
+        public static bool TableExists(string table)
+        {
+            
+
+
+
+            using(var context = new TemperatureDBContext())
+            {
+                var sqlQuery = $"SELECT COUNT(*) as Count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{table}'";
+                int count = context.Database.ExecuteSqlRaw(sqlQuery);
+                return count > 0;
+
+            }
+        }
+        public static void ImportToDB(string location=null)
+        {
+            //"2016 - 05 - 31 13:58:30,Inne,24.8,42";
+            string[] temperatureFileRows = File.ReadAllLines(Directory.GetCurrentDirectory() + @"\TemperaturData.csv")
+                                           .Where(line => line.Contains($",{location},"))
+                                           .ToArray();
 
 
             using (var context = new TemperatureDBContext())
@@ -75,12 +143,15 @@ namespace TemperatureWPF
                     }
                     finally
                     {
+                        Console.WriteLine("Comitting please wait...");
                         transaction.Commit();
                     }
                 }
+                Console.WriteLine("Saving changes please wait...");
                 context.SaveChanges();
+                Console.WriteLine("Done! press any key to continue");
+                Console.ReadKey();
             }
-            FreeConsole();
         }
     }
 }

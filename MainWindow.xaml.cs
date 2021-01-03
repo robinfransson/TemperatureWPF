@@ -29,8 +29,10 @@ namespace TemperatureWPF
         public MainWindow()
         {
             InitializeComponent();
+            Setup.Verify();
             SetupDatePicker();
             GetAvailableYears();
+            
         }
 
 
