@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TemperatureWPF.Models;
+using System;
 
 namespace TemperatureWPF
 {
@@ -13,6 +14,13 @@ namespace TemperatureWPF
     {
         private static Func<DateTime, string> formatDate = (dt) => dt.ToString(Dates.DateFormat);
         private static Func<IGrouping<string, Outdoor>, double> averageTemperatureForGroup = (grp) => grp.Average(outdoor => outdoor.Temperature.Value);
+
+
+
+
+
+
+
         public static List<DataHolder> GetAverageHumidities<T>(List<T> table)
         {
             List<DataHolder> medians = new List<DataHolder>();
@@ -89,7 +97,7 @@ namespace TemperatureWPF
         }
 
 
-        public static DateTime? FindAutumnStart(int year)
+        public static (DateTime?, int) FindAutumnStart(int year)
         {
             DateTime firstDateToCheck = new DateTime(year, 08, 01);
             DateTime? autumnStartDate = null;
@@ -106,7 +114,7 @@ namespace TemperatureWPF
                     double? averageTemperature = group.Average(outdoor => outdoor.Temperature);
                     DateTime currentDate = DateTime.Parse(group.Key);
 
-                    var followingDays = dateGroups.Where(group => DateTime.Parse(group.Key) >= currentDate && DateTime.Parse(group.Key) <= currentDate.AddDays(4))
+                    var followingDays = dateGroups.Where(grp => DateTime.Parse(grp.Key) >= currentDate && DateTime.Parse(group.Key) <= currentDate.AddDays(4))
                         //.Select(grp => grp.Average(outdoor => outdoor.Temperature))
                         .ToList();
 
@@ -122,7 +130,7 @@ namespace TemperatureWPF
                     }
                 }
             }
-            return autumnStartDate;
+            return (autumnStartDate, 0);
         }
 
 
@@ -189,6 +197,10 @@ namespace TemperatureWPF
 
             else throw new NotImplementedException(message: "Type not implemented");
         }
+
+
+
+
         public static List<MoldChance> ChanceOfMold<T>(List<T> table)
         {
             Type t = typeof(T);
@@ -217,7 +229,44 @@ namespace TemperatureWPF
             return groupedAverage;
         }
 
+        public static void BalconyOpenTimePerDay()
+        {
+            using (var context = new TemperatureDBContext())
+            {
+                var outdoorTemperatures = context.Outdoors.OrderBy(outdoor => outdoor.Date);
+                var indoorTemperatures = context.Indoors.OrderBy(indoor => indoor.Date);
+                var indoorToCompare = indoorTemperatures.FirstOrDefault();
+                List<DataHolder> dh = new List<DataHolder>();
+                foreach(var indoor in indoorTemperatures.Skip(1))
+                {
+                    DateTime? totalTime = new DateTime();
+                    Outdoor outdoorTemp = outdoorTemperatures.Where(outdoor => outdoor.Date > indoor.Date)
+                                                              .OrderBy(outdoor => outdoor.Date)
+                                                              .FirstOrDefault();
+                    Outdoor outdoorToCompare = outdoorTemperatures.Where(outdoor => outdoor.Date > indoor.Date && outdoor.Date != outdoorTemp.Date)
+                                                                  .OrderBy(outdoor => outdoor.Date)
+                                                                  .FirstOrDefault();
+                    bool indoorTemperatureLowered = indoorToCompare.Temperature < indoor.Temperature;
+                    bool outdoorTemperatureHigher = outdoorTemp.Temperature > outdoorToCompare.Temperature;
+                    bool bothChanged = indoorTemperatureLowered && outdoorTemperatureHigher;
+                    if (bothChanged)
+                    {
+                        totalTime += outdoorTemp.Date - indoor.Date;
+                    }
+                    //if(indoor.Temperature < outdoor.Temperature)
+                    //{
+                    //    asda.Add(new Tuple<string, string, double?, double?>(indoorDate.ToString(Dates.DateFormat), "hotter", indoor.Temperature, outdoor.Temperature));
+                    //}
+                }
+            }
+        }
+
     }
+
+
+
+
+
 
 
 }

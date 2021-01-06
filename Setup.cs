@@ -21,13 +21,15 @@ namespace TemperatureWPF
         public static void Verify()
         {
             AllocConsole();
-            bool dbCreated = DatabaseExists();
-            Console.WriteLine("Database created now="+dbCreated);
             using(var context = new TemperatureDBContext())
             {
                 bool dataInOutdoorTable = context.Outdoors.Any();
                 bool dataInIndoorTable = context.Indoors.Any();
-                if(!dataInIndoorTable)
+
+                bool dbCreated = DatabaseExists();
+                Console.WriteLine("Database created now=" + dbCreated);
+
+                if (!dataInIndoorTable)
                 {
                     Console.WriteLine("Table Indoor does not have data! Press anywhere to import it!");
                     Console.ReadKey();

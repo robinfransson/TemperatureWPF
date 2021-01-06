@@ -7,8 +7,19 @@ create database TemperatureDB
 
 use TemperatureDB
 
-drop database TemperatureDB
+--drop database TemperatureDB
 
+Select Count(i.Date)
+from Indoor as i
+
+
+select count(o.Date)
+from Outdoor as o
+
+
+
+join Outdoor as O
+on i.Date = O.Date
 
 
 drop table Indoor, Outdoor

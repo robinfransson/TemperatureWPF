@@ -150,7 +150,9 @@ namespace TemperatureWPF
         private void autumnStart_Click(object sender, RoutedEventArgs e)
         {
             int selectedYear = int.Parse(yearSelectComboBox.SelectedItem.ToString());
-            DateTime? autumnStartDate = SearchDatabase.FindAutumnStart(selectedYear);
+            (DateTime? date, int days) = SearchDatabase.FindAutumnStart(selectedYear);
+            DateTime? autumnStartDate = date;
+            int daysFound = days;
             if (!autumnStartDate.HasValue)
             {
                 MessageBox.Show("No data avaiable from " + selectedYear);
