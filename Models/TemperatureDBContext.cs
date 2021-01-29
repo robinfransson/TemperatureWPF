@@ -27,9 +27,9 @@ namespace TemperatureWPF.Models
             if (!optionsBuilder.IsConfigured)
             {
                 IConfigurationRoot configuration = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json")
-                    .Build();
+                       .SetBasePath(Directory.GetCurrentDirectory())
+                       .AddJsonFile("appsettings.json")
+                       .Build();
                 optionsBuilder.UseSqlServer(configuration.GetConnectionString("TemperatureDB"));
             }
         }

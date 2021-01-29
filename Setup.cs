@@ -6,6 +6,9 @@ using System.Text;
 using TemperatureWPF.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Windows;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace TemperatureWPF
 {
@@ -14,102 +17,107 @@ namespace TemperatureWPF
 
         [DllImport("Kernel32")]
         public static extern void AllocConsole();
-
         [DllImport("Kernel32")]
         public static extern void FreeConsole();
 
         public static void Verify()
         {
-            AllocConsole();
-            using(var context = new TemperatureDBContext())
-            {
-                bool dataInOutdoorTable = context.Outdoors.Any();
-                bool dataInIndoorTable = context.Indoors.Any();
-
-                bool dbCreated = DatabaseExists();
-                Console.WriteLine("Database created now=" + dbCreated);
-
-                if (!dataInIndoorTable)
-                {
-                    Console.WriteLine("Table Indoor does not have data! Press anywhere to import it!");
-                    Console.ReadKey();
-                    ImportToDB("Inne");
-                }
-                if (!dataInOutdoorTable)
-                {
-                    Console.WriteLine("Table Outdoor does not have data! Press anywhere to import it!");
-                    Console.ReadKey();
-                    ImportToDB("Ute");
-                }
-            }
-            FreeConsole();
-        }
-
-
-        public static void CreateTable(string tableName)
-        {
-            string sqlQuery = "create table " + tableName + "(" +
-                              "ID int IDENTITY NOT NULL," +
-                              "Date DateTime2," +
-                              "Temperature float," +
-                              "Humidity int," +
-                              "PRIMARY KEY(ID))";
-            using(var context = new TemperatureDBContext())
-            {
-                int queryResult = context.Database.ExecuteSqlRaw(sqlQuery);
-                Console.WriteLine("result="+queryResult);
-            }
-        }
-
-        public static bool DatabaseExists()
-        {
+            bool dbCreatedNow;
+            bool dataInOutdoorTable;
+            bool dataInIndoorTable;
             using (var context = new TemperatureDBContext())
             {
-                return context.Database.EnsureCreated();
+
+                
+
+
+
+                //finns inte databasen och tabellerna skapas dom här
+                dbCreatedNow = context.Database.EnsureCreated();
+                dataInOutdoorTable = context.Outdoors.Any();
+                dataInIndoorTable = context.Indoors.Any();
+                if (dbCreatedNow)
+                {
+                    MessageBox.Show("Tables created now=" + dbCreatedNow);
+                }
 
             }
+            CheckIfDataInTables(dataInIndoorTable, dataInOutdoorTable);
+            //FreeConsole();
         }
 
-        public static bool TableExists(string table)
+        private static void CheckIfDataInTables(bool dataInIndoorTable, bool dataInOutdoorTable)
         {
-            
-
-
-
-            using(var context = new TemperatureDBContext())
+            bool consoleOpen = false;
+            if (!dataInOutdoorTable || !dataInOutdoorTable)
             {
-                var sqlQuery = $"SELECT COUNT(*) as Count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{table}'";
-                int count = context.Database.ExecuteSqlRaw(sqlQuery);
-                return count > 0;
-
+                //saknas det data i någon av tabellerna öppnas ett konsolfönster för output
+                //när data ska importeras till databasen
+                consoleOpen = true;
+                AllocConsole();
+            }
+            if (!dataInIndoorTable)
+            {
+                Console.WriteLine("Table Indoor does not have data! Press anywhere to import it!");
+                Console.ReadKey();
+                ImportToDB<Indoor>();
+            }
+            if (!dataInOutdoorTable)
+            {
+                Console.WriteLine("Table Outdoor does not have data! Press anywhere to import it!");
+                Console.ReadKey();
+                ImportToDB<Outdoor>();
+            }
+            if(consoleOpen)
+            {
+                FreeConsole();
             }
         }
-        public static void ImportToDB(string location=null)
+        /// <summary>
+        /// Startar en ny transaktion där datat läggs in i databasen, beroende på vilken typ T är
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        public static void ImportToDB<T>()
         {
-            //"2016 - 05 - 31 13:58:30,Inne,24.8,42";
-            string[] temperatureFileRows = File.ReadAllLines(Directory.GetCurrentDirectory() + @"\TemperaturData.csv")
-                                           .Where(line => line.Contains($",{location},"))
+            //format "2016 - 05 - 31 13:58:30,Inne,24.8,42";
+            string[] temperatureFileRows;
+
+            Type t = typeof(T);
+
+            if(t == typeof(Outdoor))
+            {
+               temperatureFileRows = File.ReadAllLines(Directory.GetCurrentDirectory() + @"\TemperaturData.csv")
+                                           .Where(line => line.Contains($",Ute,"))
                                            .ToArray();
+            }
+            else
+            {
+                temperatureFileRows = File.ReadAllLines(Directory.GetCurrentDirectory() + @"\TemperaturData.csv")
+                                           .Where(line => line.Contains($",Inne,"))
+                                           .ToArray();
+            }
+
+            int i = 1;
 
 
             using (var context = new TemperatureDBContext())
             {
                 using (var transaction = context.Database.BeginTransaction())
                 {
+
                     try
                     {
-                        int i = 1;
                         foreach (string row in temperatureFileRows)
                         {
-
-                            string debugData = "";
+                            string consoleOutput = "";
 
                             string[] rowData = row.Split(',');
                             DateTime dateFromFile = DateTime.Parse(rowData[0]);
-                            double? temperatureFromFile = double.Parse(rowData[2].Replace('.', ',')); //ersätter . med , för att kunda köra parse
+                            double temperatureFromFile = double.Parse(rowData[2].Replace('.', ',')); //ersätter . med , för att kunda köra parse
                             int humidityFromFile = int.Parse(rowData[3]);
 
-                            if (rowData[1] == "Inne")
+                            if (t == typeof(Indoor))
                             {
                                 Indoor temperatureIndoor = new Indoor()
                                 {
@@ -118,7 +126,8 @@ namespace TemperatureWPF
                                     Humidity = humidityFromFile
                                 };
                                 context.Indoors.Add(temperatureIndoor);
-                                debugData = $"{i}. Added indoor date: {temperatureIndoor.Date.ToString()},\n\t Deg: {temperatureIndoor.Temperature} Hum: {temperatureIndoor.Humidity}";
+                                consoleOutput = $"#{i}. Added indoor date: {temperatureIndoor.Date}," +
+                                                $"\n\t Deg: {temperatureIndoor.Temperature} Hum: {temperatureIndoor.Humidity}";
                             }
                             else
                             {
@@ -131,16 +140,22 @@ namespace TemperatureWPF
 
                                 context.Outdoors.Add(temperatureOutdoor);
 
-                                debugData = $"{i}. Added outdoor date: {temperatureOutdoor.Date.ToString()},\n\t Deg: {temperatureOutdoor.Temperature} Hum: {temperatureOutdoor.Humidity}";
+                                consoleOutput = $"#{i}. Added outdoor date: {temperatureOutdoor.Date}," +
+                                                $"\n\t Deg: {temperatureOutdoor.Temperature} Hum: {temperatureOutdoor.Humidity}";
 
                             }
-                            Console.WriteLine(debugData);
+                            Console.WriteLine(consoleOutput);
                             i++;
                         }
+                        Console.WriteLine("Saving changes please wait...");
+                        context.SaveChanges();
+                        Console.WriteLine("Done! press any key to continue");
+                        Console.ReadKey();
+
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e.Message + " " + e.InnerException);
+                        Console.WriteLine(e.Message + "\n\t" + e.InnerException);
                         transaction.Rollback();
                     }
                     finally
@@ -149,11 +164,36 @@ namespace TemperatureWPF
                         transaction.Commit();
                     }
                 }
-                Console.WriteLine("Saving changes please wait...");
-                context.SaveChanges();
-                Console.WriteLine("Done! press any key to continue");
-                Console.ReadKey();
             }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//finns inte databasen skapas den
+//if (!context.Database.GetService<IRelationalDatabaseCreator>().Exists())
+//{
+//    context.Database.GetService<IRelationalDatabaseCreator>().Create();
+//}
+//

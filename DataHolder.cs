@@ -1,30 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TemperatureWPF
 {
+    /// <summary>
+    /// Beroende på context är value temperatur eller luftfuktighet
+    /// </summary>
     class DataHolder
     {
-        public double? Value { get; set; }
+        public double Value { get; set; }
         public string Date { get; set; }
 
-        public DateTime dt { get; set; }
 
-
-        public DataHolder(double? value, string date)
+        public DataHolder(double value, DateTime date)
         {
             Value = value;
-            Date = date;
-        }
-
-        public DataHolder(double? value, string date, DateTime dtc)
-        {
-            Value = value;
-            Date = date;
-            dt = dtc;
+            Date = date.ToString("d"); ;
         }
     }
 }

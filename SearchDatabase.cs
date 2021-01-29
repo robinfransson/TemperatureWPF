@@ -3,88 +3,105 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TemperatureWPF.Models;
-using System;
 
 namespace TemperatureWPF
 {
     class SearchDatabase
     {
-        private static Func<DateTime, string> formatDate = (dt) => dt.ToString(Dates.DateFormat);
-        private static Func<IGrouping<string, Outdoor>, double> averageTemperatureForGroup = (grp) => grp.Average(outdoor => outdoor.Temperature.Value);
 
-
-
-
-
-
-
-        public static List<DataHolder> GetAverageHumidities<T>(List<T> table)
+        private static Func<DateTime, DateTime, bool> FiveDaysInARow
         {
-            List<DataHolder> medians = new List<DataHolder>();
+            get
+            {
+                return (startDate, currentDate) => (currentDate >= startDate) && (currentDate <= startDate.AddDays(4));
+            }
+        }
+
+        //om medeltemperatur är mindre än 10 och över 0 (meterologisk höst)
+        private static bool AutumnTemperatureRange(IGrouping<DateTime, Outdoor> grp) => AverageTemperatureOutdoor(grp) >= 0.00d && AverageTemperatureOutdoor(grp) <= 10.00d;
+
+        //om medeltemperatur är mindre än 0 (meterologisk höst)
+        private static bool WinterTemperatureRange(IGrouping<DateTime, Outdoor> grp) => AverageTemperatureOutdoor(grp) <= 0.00d;
+
+
+        private static double AverageTemperatureOutdoor(IGrouping<DateTime, Outdoor> grp) => Math.Round(grp.Average(data => data.Temperature), 2);
+        private static double AverageTemperatureIndoor(IGrouping<DateTime, Indoor> grp) => Math.Round(grp.Average(data => data.Temperature), 2);
+
+
+
+        private static double AverageHumidityOutdoor(IGrouping<DateTime, Outdoor> grp) => Math.Round(grp.Average(data => data.Humidity), 2);
+        private static double AverageHumidityIndoor(IGrouping<DateTime, Indoor> grp) => Math.Round(grp.Average(data => data.Humidity), 2);
+
+
+
+
+        public static List<DataHolder> GetAverageHumidities<T>()
+        {
+            List<DataHolder> averageHumidities = new List<DataHolder>();
             Type t = typeof(T);
-            if (t.Equals(typeof(Outdoor)))
+
+
+            using (var context = new TemperatureDBContext())
             {
-                var groupedAverage = table.OfType<Outdoor>().GroupBy(outdoor => outdoor.Date.Value.ToString(Dates.DateFormat))
-                    .OrderBy(group => group.Average(outdoor => outdoor.Humidity));
-
-                foreach (var group in groupedAverage)
+                //kollar vilken typ som listan innehåller
+                if (t == typeof(Outdoor))
                 {
-                    string date = group.Key;
-                    double humidity = (double)Math.Round(group.Average(temp => temp.Humidity).Value, 2);
-
-                    medians.Add(new DataHolder(humidity, date));
-
-                }
-            }
-
-            else if (t.Equals(typeof(Indoor)))
-            {
-                var groupedAverage = table.OfType<Indoor>().GroupBy(indoor => formatDate(indoor.Date.Value))
-                    .OrderBy(group => group.Average(indoor => indoor.Humidity));
-
-                foreach (var group in groupedAverage)
-                {
-                    string date = group.Key;
-                    double humidity = (double)Math.Round(group.Average(temp => temp.Humidity).Value, 2);
-
-                    medians.Add(new DataHolder(humidity, date));
+                    averageHumidities = context.Outdoors
+                                     .AsEnumerable()
+                                     .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
+                                     .Select(grp => new DataHolder(value: AverageHumidityOutdoor(grp),
+                                                                   date: grp.Key))
+                                     .OrderBy(data => data.Value)
+                                     .ToList();
 
                 }
 
-            }
 
-            return medians;
+                else if (t == typeof(Indoor))
+                {
+                    averageHumidities = context.Indoors
+                                      .AsEnumerable()
+                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))
+                                      .Select(grp => new DataHolder(value: AverageHumidityIndoor(grp),
+                                                                    date: grp.Key))
+                                      .OrderBy(data => data.Value)
+                                      .ToList();
+
+                }
+
+                return averageHumidities;
+            }
         }
 
 
-        public static DateTime? FindWinterStart(int year)
+        public static DateTime? FindWinterStart()
         {
-            DateTime firstDateToCheck = new DateTime(year, 08, 01);
+            DateTime firstDateToCheck = new DateTime(2016, 08, 01); //vintern börjar tidigast den 1a augusti
             DateTime? winterStartDate = null;
+
             using (var context = new TemperatureDBContext())
             {
-                var dateGroups = context.Outdoors.AsEnumerable()
-                                            .Where(outdoor => outdoor.Date.Value >= firstDateToCheck)
-                                            .GroupBy(outdoor => formatDate(outdoor.Date.Value))
-                                            .OrderBy(grp => grp.Key)
-                                            .Where(grp => averageTemperatureForGroup(grp) <= 0.00d)
+                var groupedByDate = context.Outdoors.AsEnumerable()
+                                            .Where(outdoor => outdoor.Date >= firstDateToCheck) //allt som är senare än firstDate
+                                            .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar dom 
+                                            .OrderBy(group => group.Key)
+                                            .Where(WinterTemperatureRange)
                                             .ToList();
-                foreach (var group in dateGroups)
+
+                foreach (var grp in groupedByDate)
                 {
-                    double? averageTemperature = group.Average(outdoor => outdoor.Temperature);
-                    DateTime currentDate = DateTime.Parse(group.Key);
+                    //Key är yyyy-MM-dd i format
 
-                    var followingDays = dateGroups.Where(grp => DateTime.Parse(grp.Key) >= currentDate && DateTime.Parse(grp.Key) <= currentDate.AddDays(4))
-                        //.Select(grp => grp.Average(grp => grp.Temperature))
-                        .ToList();
+                    DateTime firstDate = grp.Key;
+
+                    var followingDays = groupedByDate.Count(group => FiveDaysInARow(firstDate, group.Key));
 
 
-                    if (followingDays.Count == 5)
+                    if (followingDays >= 5)
                     {
-                        winterStartDate = currentDate;
+                        //om det finns minst 5 dagar i följd där medeltemperaturen är under 0 så är det meterologisk vinter
+                        winterStartDate = firstDate;
                         break;
                     }
                     else
@@ -97,176 +114,169 @@ namespace TemperatureWPF
         }
 
 
-        public static (DateTime?, int) FindAutumnStart(int year)
+        public static DateTime? FindAutumnStart()
         {
-            DateTime firstDateToCheck = new DateTime(year, 08, 01);
+            DateTime firstDateToCheck = new DateTime(2016, 08, 01); // hösten börjar tidigast 1a augusti
             DateTime? autumnStartDate = null;
+
+
+
             using (var context = new TemperatureDBContext())
             {
-                var dateGroups = context.Outdoors.AsEnumerable()
-                                            .Where(outdoor => outdoor.Date.Value >= firstDateToCheck)
-                                            .GroupBy(outdoor => formatDate(outdoor.Date.Value))
-                                            .OrderBy(grp => grp.Key)
-                                            .Where(grp => averageTemperatureForGroup(grp) >= 0.00d && averageTemperatureForGroup(grp) <= 10.00d)
+                var groupedByDate = context.Outdoors.AsEnumerable()
+                                            .Where(outdoor => outdoor.Date >= firstDateToCheck) //alla datum senare än första datumet
+                                            .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
+                                            .Where(AutumnTemperatureRange)
+                                            .OrderBy(group => group.Key)
                                             .ToList();
-                foreach (var group in dateGroups)
+                foreach (var grp in groupedByDate)
                 {
-                    double? averageTemperature = group.Average(outdoor => outdoor.Temperature);
-                    DateTime currentDate = DateTime.Parse(group.Key);
-
-                    var followingDays = dateGroups.Where(grp => DateTime.Parse(grp.Key) >= currentDate && DateTime.Parse(group.Key) <= currentDate.AddDays(4))
-                        //.Select(grp => grp.Average(outdoor => outdoor.Temperature))
-                        .ToList();
+                    DateTime startDate = grp.Key;
+                    DateTime endDate = grp.Key.AddDays(4);
+                    var followingDays = groupedByDate.Count(group => FiveDaysInARow(startDate, group.Key));
 
 
-                    if(followingDays.Count == 5)
+                    //om det finns 5 dagar i följd där medeltemperaturen är över 0 och under 10 så är det meterologisk höst
+                    if (followingDays >= 5)
                     {
-                        autumnStartDate = currentDate;
+                        //då sätts autumnStartDate till det datumet som kollades
+                        autumnStartDate = startDate;
                         break;
                     }
                     else
                     {
-                        continue;
+                        continue; //annars fortsätter loopen
                     }
                 }
             }
-            return (autumnStartDate, 0);
+            return autumnStartDate;
         }
 
 
-        public static List<DataHolder> GetAverageTemperatures<T>(List<T> table)
+        public static List<DataHolder> GetAverageTemperatures<T>()
         {
-            List<DataHolder> medians = new List<DataHolder>();
+            List<DataHolder> averageTemperatures = new List<DataHolder>();
             Type t = typeof(T);
 
-            if (t.Equals(typeof(Outdoor)))
-            {
-                var groupedAverage = table.OfType<Outdoor>().GroupBy(outdoor => outdoor.Date.Value.ToString(Dates.DateFormat))
-                    .OrderByDescending(group => group.Average(outdoor => outdoor.Temperature));
-
-                foreach (var group in groupedAverage)
-                {
-                    string date = group.Key;
-                    double? temperature = (double?)Math.Round((decimal)group.Average(temp => temp.Temperature), 2);
-
-                    medians.Add(new DataHolder(temperature, date));
-
-                }
-                return medians;
-            }
-            else if (t.Equals(typeof(Indoor)))
-            {
-                var groupedAverage = table.OfType<Indoor>().GroupBy(indoor => indoor.Date.Value.ToString(Dates.DateFormat))
-                    .OrderByDescending(group => group.Average(indoor => indoor.Temperature));
-
-                foreach (var group in groupedAverage)
-                {
-                    string date = group.Key;
-                    double? temperature = (double?)Math.Round((decimal)group.Average(temp => temp.Temperature), 2);
-
-                    medians.Add(new DataHolder(temperature, date));
-
-                }
-                return medians;
-            }
-
-            else throw new NotImplementedException(message: "Type not implemented" + typeof(T).ToString());
-        }
-
-
-        public static double MedianTemperatureSpecifiedDate<T>(List<T> table, DateTime? date)
-        {
-            Type t = typeof(T);
-            if (t.Equals(typeof(Outdoor)))
-            {
-
-                return (double)table.OfType<Outdoor>().AsEnumerable().GroupBy(outdoor => outdoor.Date.Value.ToString(Dates.DateFormat))
-                    .Where(group => group.Key == date.Value.ToString(Dates.DateFormat))
-                    .Select(group => group.Average(outdoor => outdoor.Temperature))
-                    .FirstOrDefault();
-            }
-            else if (t.Equals(typeof(Indoor)))
-            {
-                return (double)table.OfType<Indoor>().GroupBy(indoor => indoor.Date.Value.ToString(Dates.DateFormat))
-                    .Where(group => group.Key == date.Value.ToString(Dates.DateFormat))
-                    .Select(group => group.Average(indoor => indoor.Temperature))
-                    .FirstOrDefault();
-
-            }
-
-
-            else throw new NotImplementedException(message: "Type not implemented");
-        }
-
-
-
-
-        public static List<MoldChance> ChanceOfMold<T>(List<T> table)
-        {
-            Type t = typeof(T);
-            List<MoldChance> groupedAverage;
-            if (t.Equals(typeof(Outdoor)))
-            {
-                groupedAverage = table.OfType<Outdoor>()
-                   .GroupBy(outdoor => outdoor.Date.Value.ToString(Dates.DateFormat))
-                   .OrderByDescending(group => group.Average(outdoor => outdoor.Humidity))
-                   .ThenBy(group => group.Average(outdoor => outdoor.Temperature))
-                   .Select(s => new MoldChance(s.Key, s.Average(grp => grp.Humidity), s.Average(grp => grp.Temperature))).ToList();
-            }
-            else if (t.Equals(typeof(Indoor)))
-            {
-                groupedAverage = table.OfType<Indoor>()
-                   .GroupBy(indoor => indoor.Date.Value.ToString(Dates.DateFormat))
-                   .OrderByDescending(group => group.Average(indoor => indoor.Humidity))
-                   .ThenBy(group => group.Average(indoor => indoor.Temperature))
-                   .Select(s => new MoldChance(s.Key, s.Average(grp => grp.Humidity), s.Average(grp => grp.Temperature))).ToList();
-
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-            return groupedAverage;
-        }
-
-        public static void BalconyOpenTimePerDay()
-        {
             using (var context = new TemperatureDBContext())
             {
-                var outdoorTemperatures = context.Outdoors.OrderBy(outdoor => outdoor.Date);
-                var indoorTemperatures = context.Indoors.OrderBy(indoor => indoor.Date);
-                var indoorToCompare = indoorTemperatures.FirstOrDefault();
-                List<DataHolder> dh = new List<DataHolder>();
-                foreach(var indoor in indoorTemperatures.Skip(1))
+                if (t == typeof(Outdoor))
                 {
-                    DateTime? totalTime = new DateTime();
-                    Outdoor outdoorTemp = outdoorTemperatures.Where(outdoor => outdoor.Date > indoor.Date)
-                                                              .OrderBy(outdoor => outdoor.Date)
-                                                              .FirstOrDefault();
-                    Outdoor outdoorToCompare = outdoorTemperatures.Where(outdoor => outdoor.Date > indoor.Date && outdoor.Date != outdoorTemp.Date)
-                                                                  .OrderBy(outdoor => outdoor.Date)
-                                                                  .FirstOrDefault();
-                    bool indoorTemperatureLowered = indoorToCompare.Temperature < indoor.Temperature;
-                    bool outdoorTemperatureHigher = outdoorTemp.Temperature > outdoorToCompare.Temperature;
-                    bool bothChanged = indoorTemperatureLowered && outdoorTemperatureHigher;
-                    if (bothChanged)
-                    {
-                        totalTime += outdoorTemp.Date - indoor.Date;
-                    }
-                    //if(indoor.Temperature < outdoor.Temperature)
-                    //{
-                    //    asda.Add(new Tuple<string, string, double?, double?>(indoorDate.ToString(Dates.DateFormat), "hotter", indoor.Temperature, outdoor.Temperature));
-                    //}
+                    averageTemperatures = context.Outdoors
+                                      .AsEnumerable()
+                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))
+                                      .Select(grp => new DataHolder(value: AverageTemperatureOutdoor(grp),
+                                                                    date: grp.Key))
+                                      .OrderByDescending(data => data.Value)
+                                      .ToList();
+
                 }
+                else if (t == typeof(Indoor))
+                {
+                    averageTemperatures = context.Indoors
+                                       .AsEnumerable()
+                                       .GroupBy(indoor => Dates.FormatDate(indoor.Date))
+                                       .Select(grp => new DataHolder(value: AverageTemperatureIndoor(grp),
+                                                                     date: grp.Key))
+                                       .OrderByDescending(data => data.Value)
+                                       .ToList();
+                }
+                else
+                {
+                    throw new NotImplementedException(message: "Type not implemented" + typeof(T));
+                }
+
+                return averageTemperatures;
+            }
+        }
+
+
+        public static double AverageTemperatureSpecifiedDate<T>(DateTime date)
+        {
+            double temperature;
+            Type t = typeof(T);
+
+
+
+
+            using (var context = new TemperatureDBContext())
+            {
+
+                if (t == typeof(Outdoor))
+                {
+                    temperature = context.Outdoors.AsEnumerable()
+                                                  .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar 
+                                                  .Where(group => group.Key == date)
+                                                  .Select(AverageTemperatureOutdoor)
+                                                  .FirstOrDefault();
+                }
+                else if (t == typeof(Indoor))
+                {
+                    temperature = context.Indoors.AsEnumerable()
+                                                 .GroupBy(indoor => Dates.FormatDate(indoor.Date))
+                                                 .Where(group => group.Key == date)
+                                                 .Select(AverageTemperatureIndoor)
+                                                 .FirstOrDefault();
+                }
+                else
+                {
+                    throw new NotImplementedException(message: "Type " + typeof(T) + "not implemented");
+                }
+
+                return temperature;
+            }
+        }
+
+
+
+
+        public static List<MoldRisk> ChanceOfMold<T>()
+        {
+            //mögelrisk =((fuktighet -78) * (temperatur/15))/0,22
+            Type t = typeof(T);
+            List<MoldRisk> listOfMoldRisks = new List<MoldRisk>();
+
+
+
+
+            using (var context = new TemperatureDBContext())
+            {
+                if (t == typeof(Outdoor))
+                {
+                    listOfMoldRisks = context.Outdoors.AsEnumerable()
+                                                      .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
+                                                      .Select(s => new MoldRisk(date: s.Key,
+                                                                                  humidity: s.Average(grp => grp.Humidity),
+                                                                                  temperature: s.Average(grp => grp.Temperature)))
+                                                      .OrderBy(moldChance => moldChance.RiskPercent)
+                                                      .ToList();
+                }
+
+
+
+
+                else if (t == typeof(Indoor))
+                {
+                    listOfMoldRisks = context.Indoors
+                                             .AsEnumerable()
+                                             .GroupBy(indoor => Dates.FormatDate(indoor.Date))
+                                             .Select(s => new MoldRisk(date: s.Key,
+                                                                        humidity: s.Average(grp => grp.Humidity),
+                                                                        temperature: s.Average(grp => grp.Temperature)))
+                                             .OrderBy(moldChance => moldChance.RiskPercent)
+                                             .ToList();
+
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+
+
+
+                return listOfMoldRisks;
             }
         }
 
     }
-
-
-
-
-
-
-
 }
