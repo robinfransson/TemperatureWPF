@@ -145,7 +145,8 @@ namespace TemperatureWPF
             }
             else
             {
-                MessageBox.Show($"Autumn started at: {Dates.FormatDate(autumnStartDate.Value)}");
+                string autumnStart = autumnStartDate.Value.ToString("d");
+                MessageBox.Show($"Autumn started at: {autumnStart}");
             }
         }
 

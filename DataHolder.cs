@@ -7,14 +7,14 @@ namespace TemperatureWPF
     /// </summary>
     class DataHolder
     {
-        public double Value { get; set; }
         public string Date { get; set; }
+        public double Value { get; set; }
 
 
-        public DataHolder(double value, DateTime date)
+        public DataHolder(DateTime date, double value)
         {
+            Date = date.ToString("d");
             Value = value;
-            Date = date.ToString("d"); ;
         }
     }
 }

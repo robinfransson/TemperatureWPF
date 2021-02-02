@@ -44,15 +44,15 @@ namespace TemperatureWPF
 
             using (var context = new TemperatureDBContext())
             {
-                //kollar vilken typ som listan innehåller
+                //beroende på vilken typ T är så väljs tabell
                 if (t == typeof(Outdoor))
                 {
                     averageHumidities = context.Outdoors
                                      .AsEnumerable()
-                                     .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
-                                     .Select(grp => new DataHolder(value: AverageHumidityOutdoor(grp),
-                                                                   date: grp.Key))
-                                     .OrderBy(data => data.Value)
+                                     .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))//medel fuktighet för datumet (gruppen)
+                                     .Select(grp => new DataHolder(date: grp.Key, 
+                                                                   value: AverageHumidityOutdoor(grp)))
+                                     .OrderBy(data => data.Value) //Value är i det här fallet Medelluftfuktighet
                                      .ToList();
 
                 }
@@ -63,8 +63,8 @@ namespace TemperatureWPF
                     averageHumidities = context.Indoors
                                       .AsEnumerable()
                                       .GroupBy(indoor => Dates.FormatDate(indoor.Date))
-                                      .Select(grp => new DataHolder(value: AverageHumidityIndoor(grp),
-                                                                    date: grp.Key))
+                                      .Select(grp => new DataHolder(date: grp.Key, 
+                                                                    value: AverageHumidityIndoor(grp)))
                                       .OrderBy(data => data.Value)
                                       .ToList();
 
@@ -124,10 +124,10 @@ namespace TemperatureWPF
             using (var context = new TemperatureDBContext())
             {
                 var groupedByDate = context.Outdoors.AsEnumerable()
-                                            .Where(outdoor => outdoor.Date >= firstDateToCheck) //alla datum senare än första datumet
-                                            .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
-                                            .Where(AutumnTemperatureRange)
-                                            .OrderBy(group => group.Key)
+                                            .Where(outdoor => outdoor.Date >= firstDateToCheck) //alla datum senare än tidigaste höstdatumet
+                                            .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar på datum yyyy-MM-dd
+                                            .Where(AutumnTemperatureRange) //där temperaturen är under 10 och över 0
+                                            .OrderBy(group => group.Key) //grupperar på datumet i fallande ordning
                                             .ToList();
                 foreach (var grp in groupedByDate)
                 {
@@ -164,10 +164,10 @@ namespace TemperatureWPF
                 {
                     averageTemperatures = context.Outdoors
                                       .AsEnumerable()
-                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))
-                                      .Select(grp => new DataHolder(value: AverageTemperatureOutdoor(grp),
-                                                                    date: grp.Key))
-                                      .OrderByDescending(data => data.Value)
+                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))//grupperar på datum yyyy-MM-dd
+                                      .Select(grp => new DataHolder(date: grp.Key, 
+                                                                    value: AverageTemperatureOutdoor(grp)))
+                                      .OrderByDescending(data => data.Value) //Value är i den här contexten Medel temperatur
                                       .ToList();
 
                 }
@@ -176,8 +176,7 @@ namespace TemperatureWPF
                     averageTemperatures = context.Indoors
                                        .AsEnumerable()
                                        .GroupBy(indoor => Dates.FormatDate(indoor.Date))
-                                       .Select(grp => new DataHolder(value: AverageTemperatureIndoor(grp),
-                                                                     date: grp.Key))
+                                       .Select(grp => new DataHolder(date: grp.Key, value: AverageTemperatureIndoor(grp)))
                                        .OrderByDescending(data => data.Value)
                                        .ToList();
                 }
@@ -205,10 +204,10 @@ namespace TemperatureWPF
                 if (t == typeof(Outdoor))
                 {
                     temperature = context.Outdoors.AsEnumerable()
-                                                  .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar 
-                                                  .Where(group => group.Key == date)
-                                                  .Select(AverageTemperatureOutdoor)
-                                                  .FirstOrDefault();
+                                                  .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar på datum yyyy-MM-dd
+                                                  .Where(group => group.Key == date) //väljer den grupp som har det datum som kommer från DatePicker
+                                                  .Select(AverageTemperatureOutdoor) //väljer värdet för medeltemperaturen
+                                                  .FirstOrDefault(); //första eller 0
                 }
                 else if (t == typeof(Indoor))
                 {
@@ -244,11 +243,11 @@ namespace TemperatureWPF
                 if (t == typeof(Outdoor))
                 {
                     listOfMoldRisks = context.Outdoors.AsEnumerable()
-                                                      .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))
-                                                      .Select(s => new MoldRisk(date: s.Key,
-                                                                                  humidity: s.Average(grp => grp.Humidity),
-                                                                                  temperature: s.Average(grp => grp.Temperature)))
-                                                      .OrderBy(moldChance => moldChance.RiskPercent)
+                                                      .GroupBy(outdoor => Dates.FormatDate(outdoor.Date))//grupperar på datum yyyy-MM-dd
+                                                      .Select(group => new MoldRisk(date: group.Key,
+                                                                                  humidity: group.Average(grp => grp.Humidity), //medel fuktighet för datumet (gruppen)
+                                                                                  temperature: group.Average(grp => grp.Temperature)))//medel temp för datumet (gruppen)
+                                                      .OrderBy(moldChance => moldChance.RiskPercent) //sorterar på mögelrisk
                                                       .ToList();
                 }
 
@@ -260,9 +259,9 @@ namespace TemperatureWPF
                     listOfMoldRisks = context.Indoors
                                              .AsEnumerable()
                                              .GroupBy(indoor => Dates.FormatDate(indoor.Date))
-                                             .Select(s => new MoldRisk(date: s.Key,
-                                                                        humidity: s.Average(grp => grp.Humidity),
-                                                                        temperature: s.Average(grp => grp.Temperature)))
+                                             .Select(group => new MoldRisk(date: group.Key,
+                                                                        humidity: group.Average(grp => grp.Humidity),
+                                                                        temperature: group.Average(grp => grp.Temperature)))
                                              .OrderBy(moldChance => moldChance.RiskPercent)
                                              .ToList();
 
