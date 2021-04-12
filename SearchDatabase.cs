@@ -132,7 +132,11 @@ namespace TemperatureWPF
                 foreach (var grp in groupedByDate)
                 {
                     DateTime startDate = grp.Key;
-                    DateTime endDate = grp.Key.AddDays(4);
+
+
+                    //kollar hur många dagar i följd det finns i groupedByDate, 
+
+                    //antalet dagar det är innan startDate + 4 dagar
                     var followingDays = groupedByDate.Count(group => FiveDaysInARow(startDate, group.Key));
 
 
@@ -164,7 +168,7 @@ namespace TemperatureWPF
                 {
                     averageTemperatures = context.Outdoors
                                       .AsEnumerable()
-                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))//grupperar på datum yyyy-MM-dd
+                                      .GroupBy(indoor => Dates.FormatDate(indoor.Date))//grupperar år-månad-dag
                                       .Select(grp => new DataHolder(date: grp.Key, 
                                                                     value: AverageTemperatureOutdoor(grp)))
                                       .OrderByDescending(data => data.Value) //Value är i den här contexten Medel temperatur
@@ -204,7 +208,7 @@ namespace TemperatureWPF
                 if (t == typeof(Outdoor))
                 {
                     temperature = context.Outdoors.AsEnumerable()
-                                                  .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar på datum yyyy-MM-dd
+                                                  .GroupBy(outdoor => Dates.FormatDate(outdoor.Date)) //grupperar på år-månad-dag
                                                   .Where(group => group.Key == date) //väljer den grupp som har det datum som kommer från DatePicker
                                                   .Select(AverageTemperatureOutdoor) //väljer värdet för medeltemperaturen
                                                   .FirstOrDefault(); //första eller 0

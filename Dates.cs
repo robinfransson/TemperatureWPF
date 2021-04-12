@@ -83,11 +83,11 @@ namespace TemperatureWPF
 
 
 
-                if (daysBetween > 1)
+                if (daysBetween > 1) //är det mer än 1 dag emellan så saknas det dagar
                 {
                     //är det mer än 1 dag mellan datumen så skapas en ny CalendarDateRange
                     DateTime startDate = date.AddDays(1); //startdatum för CalendarDateRange, 1 dag efter start
-                    DateTime endDate = dateAfter.AddDays(-1); //slutdatum för CalendarDateRange, 1 dag efter start
+                    DateTime endDate = dateAfter.AddDays(-1); //slutdatum för CalendarDateRange, 1 dag innan slut
                     datesToBlock.Add(new CalendarDateRange(startDate, endDate));
                 }
             }
